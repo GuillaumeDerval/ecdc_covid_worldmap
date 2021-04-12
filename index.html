@@ -1,0 +1,239 @@
+<html>
+<head>
+    <style type="text/css">
+        .map {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        .info {
+            font-size: 1.3em;
+            text-align: left;
+            background: rgba(255,255,255,0.7);
+            padding: 10px;
+        }
+
+        .info2 {
+            font-size: 1.3em;
+            text-align: left;
+            background: rgba(255,255,255,0.7);
+            padding: 10px;
+        }
+
+        .info h4{
+            font-size: 1.1em;
+            padding: 0;
+            margin: 0;
+        }
+
+        .box {
+            display: inline-block;
+            background-color: aquamarine;
+            height: 20px;
+            font-size: 15px;
+            padding: 5px;
+            opacity: 0.8;
+            color: white;
+        }
+
+        .box.darkred {
+            background-color: #3b0000;
+        }
+
+        .box.red {
+            background-color: #e32636;
+        }
+
+        .box.orange {
+            background-color: #ff8c00;
+        }
+
+        .box.green {
+            background-color: #228b22;
+        }
+
+        .box.nodata {
+            background-color: #888;
+        }
+
+        .box.toolow {
+            background-color: #88d;
+        }
+
+        /*
+        "NO_DATA": "#888",
+                    "DARKRED": "#3b0000",
+                    "RED": "#e32636",
+                    "ORANGE": "#ff8c00",
+                    "GREEN": "#228b22",
+                    "TOO_LOW_TESTING": "#88d"
+         */
+    </style>
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" integrity="sha384-DNOHZ68U8hZfKXOrtjWvjxusGo9WQnrNx2sqG0tfsghAvtVlRW3tvkXWZh58N9jp" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
+    <script src="https://d3js.org/d3.v4.js"></script>
+    <script src="js/leaflet.ajax.min.js"></script>
+</head>
+<body>
+
+<div class="map" id="mapcon"></div>
+
+<script type="text/javascript">
+    let map;
+    window.onload = function () {
+        map = new L.Map('mapcon',
+            {
+                center: new L.LatLng(0, 0),
+                zoom: 3
+            });
+
+        let OpenStreetMap_BlackAndWhite = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 18,
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        });
+
+        map.addLayer(OpenStreetMap_BlackAndWhite);
+
+        var geojsonLayer;
+        var info = L.control();
+
+        function highlightFeature(e) {
+            var layer = e.target;
+
+            layer.setStyle({
+                weight: 5,
+                color: '#666',
+                dashArray: '',
+                fillOpacity: 0.7
+            });
+
+            if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                layer.bringToFront();
+            }
+            info.update(layer.feature.properties);
+        }
+
+        function resetHighlight(e) {
+            geojsonLayer.resetStyle(e.target);
+            info.update();
+        }
+
+        function onEachFeature(feature, layer) {
+            layer.on({
+                mouseover: highlightFeature,
+                mouseout: resetHighlight
+            });
+        }
+
+        geojsonLayer = new L.GeoJSON.AJAX("covid.geojson", {
+            style: function(feature) {
+                let colors = {
+                    "NO_DATA": "#888",
+                    "DARKRED": "#3b0000",
+                    "RED": "#e32636",
+                    "ORANGE": "#ff8c00",
+                    "GREEN": "#228b22",
+                    "TOO_LOW_TESTING": "#88d"
+                }
+                return {
+                    fillColor: colors[feature.properties.Color],
+                    weight: 2,
+                    opacity: 1,
+                    color: 'white',
+                    dashArray: '3',
+                    fillOpacity: 0.7
+                };
+            },
+            onEachFeature: onEachFeature
+        });
+        geojsonLayer.addTo(map);
+
+        info.onAdd = function (map) {
+            this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
+            this.update();
+            return this._div;
+        };
+
+        // method that we will use to update the control based on feature properties passed
+        info.update = function (props) {
+            if(!props)
+                this._div.innerHTML = "Please hover a country";
+            else {
+                let colors = {
+                    "NO_DATA": "No data (or not recent enough)",
+                    "DARKRED": "Dark red",
+                    "RED": "Red",
+                    "ORANGE": "Orange",
+                    "GREEN": "Green",
+                    "TOO_LOW_TESTING": "Testing too low"
+                }
+                this._div.innerHTML = `<h4>${props.name}</h4>
+                <ul>
+                    <li><b>Color:</b> ${colors[props.Color]}</li>
+                    <li><b>Notification rate (per 100k, 14d):</b> ${props.NotificationRatePer100000.toFixed(0)}</b></li>
+                    <li><b>Positive rate (last 7d):</b> ${props.PositiveRate.toFixed(2)}%</b></li>
+                    <li><b>#Tests per 100k (last 7d):</b> ${props.TestsPer100000.toFixed(0)}</b></li>
+                    <li><b>Last update:</b> ${props.LastUpdate}</b></li>
+                </ul>`;
+
+
+            }
+        };
+
+        info.addTo(map);
+
+
+        var info2 = L.control({position:'bottomleft'});
+        info2.onAdd = function (map) {
+            this._div = L.DomUtil.create('div', 'info2'); // create a div with a class "info"
+            this._div.innerHTML = "<div class='box darkred'>Dark red</div><div class='box red'>Red</div><div class='box orange'>Orange</div><div class='box green'>Green</div><div class='box nodata'>No data</div><div class='box toolow'>Low testing</div><br/>" +
+                "Data from <a href='https://github.com/owid/covid-19-data'>Our World In Data</a><br/>" +
+                "Computations made according to <a href='https://www.consilium.europa.eu/en/infographics/a-common-approach-on-covid-19-measures/'>the European Guidelines</a><br/>" +
+                "Download the results: <a href='covid.csv'>Excel</a>, <a href='covid.csv'>CSV</a>, <a href='covid.csv'>GeoJSON</a>";
+            return this._div;
+        };
+        info2.addTo(map);
+        /*info = L.control();
+        info.update = function (props) {
+            if(props === "init") {
+                this._div.innerHTML = "<h1><i class=\"fas fa-spinner fa-pulse\"></i> Loading</h1>";
+            }
+            else if(props === "loaded") {
+                this._div.innerHTML = "<h4>" +
+                "Time to reach any location in Belgium from</h4>" +
+                "<select id='changePos'></select><br/>"+
+                "Hover the map or the legend to see which area you can reach in a given time.<br/>" +
+                "Change starting point above or click anywhere to select the nearest NMBS station"+
+                "<br/>Last map update: early 2018";
+
+
+                let select = d3.select('select#changePos').on('change',function(){
+                    selectValue = d3.select('select#changePos').property('value');
+                    console.log(selectValue);
+                    document.location = document.location.pathname+"?pos="+selectValue;
+                });
+
+                select.selectAll('option').data(allLocs).enter().append('option')
+                    .text(function (d) { return d[0]; })
+                    .attr('value', function (d) { return d[1]; })
+                    .attr('selected', function(d) { return d[1] === requestedLoc ? "selected" : null});
+            }
+        };
+
+        info.onAdd = function (map) {
+            this._div = L.DomUtil.create('div', 'info');
+            this.update("init");
+            return this._div;
+        };
+
+        info.addTo(map);*/
+    }
+</script>
+</body>
+</html>
