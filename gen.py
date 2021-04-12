@@ -94,8 +94,8 @@ from datetime import timedelta, datetime
 def get_color(last_day, nr_14, pr, tests):
     if datetime.now() - last_day > timedelta(days=14):
         return "NO_DATA"
-    if tests < 300:
-        return "TOO_LOW_TESTING"
+    #if tests < 300:
+    #    return "TOO_LOW_TESTING"
     if pr < 4.0 and nr_14 < 25:
         return "GREEN"
     if nr_14 < 50 or (nr_14 < 150 and pr < 4.0):
@@ -103,6 +103,10 @@ def get_color(last_day, nr_14, pr, tests):
     if nr_14 < 500:
         return "RED"
     return "DARKRED"
+
+
+def is_low(tests):
+    return tests < 300
 
 
 data = []
@@ -114,11 +118,12 @@ for countrycode in owid.index.levels[0]:
     if up_c_2w and up_c_lw and up_t_lw:
         positive_rate = 100.0 * new_cases_lw / new_tests_lw
         last_day = min(up_c_2w, up_c_lw, up_t_lw)
-        data.append((countrycode, get_color(last_day, notification_rate, positive_rate, new_tests_lw), last_day,
+        data.append((countrycode, get_color(last_day, notification_rate, positive_rate, new_tests_lw),
+                     is_low(new_tests_lw), last_day,
                      notification_rate, positive_rate, new_tests_lw))
-data.append(("NO_DATA", "NO_DATA", None, 0, 0, 0))
+data.append(("NO_DATA", "NO_DATA", True, None, 0, 0, 0))
 
-data = pd.DataFrame(data=data, columns=["CountryCode", "Color", "LastUpdate", "NotificationRatePer100000", "PositiveRate", "TestsPer100000"]).set_index("CountryCode")
+data = pd.DataFrame(data=data, columns=["CountryCode", "Color", "HasLowTesting", "LastUpdate", "NotificationRatePer100000", "PositiveRate", "TestsPer100000"]).set_index("CountryCode")
 
 world_map = geopandas.read_file("sources/worldmap.geojson")
 def func(x):
