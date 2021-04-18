@@ -1,0 +1,32 @@
+name: Update                   
+
+on:
+  schedule:
+  - cron: "0 0 * * *"
+
+jobs:   
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.8                         
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8                         
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - name: Download & process data
+      run: python gen.py
+    - name: Commit the new processed data
+      run: |    
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add .
+        git commit -m "Update" -a || true
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        branch: gh-pages
+        github_token: ${{ secrets.GITHUB_TOKEN }}
